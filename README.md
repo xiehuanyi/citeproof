@@ -52,12 +52,16 @@ Use **3** unless Semantic Scholar is already throttling you, then use **2**. Do 
 |---|---|
 | `verified` | Work exists, metadata matches |
 | `metadata_mismatch` | Work exists; author / year / venue / DOI / arXiv ID disagrees |
-| `inconclusive` | Missing query fields, insufficient evidence, or an unconfirmed arXiv ID |
+| `inconclusive` | Missing query fields, insufficient evidence, an unconfirmed arXiv ID, or a web reference needing manual review |
 | `likely_hallucinated` | Several sources responded; nothing close matched |
 
 Mismatch `type` values: `metadata_hallucination`, `franken_citation`, `invalid_identifier`, `version_confusion`.
 
 Google Scholar is **not** queried. JSON includes `scholarUrl` for a human to open.
+
+For model cards, blogs and project pages without a DOI or arXiv ID, a missing scholarly match produces `inconclusive` with `reason: web_check_required`. Text output includes the original HTTP(S) link when available and a regular web search link; JSON exposes `originalUrl` and `webSearchUrl`. These links are not fetched or treated as proof that the reference exists. Check the page's title, author, date and recommended citation manually. Strong scholarly matches and identifier conflicts retain their existing verdicts.
+
+The browser UI queries Crossref, DBLP, Semantic Scholar and OpenAlex. Direct arXiv API queries are disabled there; this CLI continues to query arXiv.
 
 ## Agent skill
 

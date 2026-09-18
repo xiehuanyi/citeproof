@@ -47,12 +47,14 @@ Each result `verdict`:
 
 - `verified` — work exists and metadata matches
 - `metadata_mismatch` — work exists; author/year/venue/DOI/arXiv ID disagrees (`type` may be `franken_citation`, `invalid_identifier`, `version_confusion`, `metadata_hallucination`)
-- `inconclusive` — query fields are missing, evidence is insufficient, or the supplied arXiv ID could not be confirmed
+- `inconclusive` — query fields are missing, evidence is insufficient, the supplied arXiv ID could not be confirmed, or a web reference needs manual review
 - `likely_hallucinated` — several sources responded and nothing close matched
 
 `sources[].status`: `ok` | `empty` | `error` | `skipped`. `skipped` with `reason: missing_query_fields` means no request was sent to that source; do not count it as a database miss. If `error`, read `sources[].error.code` (`timeout`, `rate_limited`, `network`, `http_403`, `http_5xx`, `blocked`, …). **A failed or skipped query is not evidence the paper is missing.**
 
 For result `reason: missing_query_fields`, ask for a title, DOI or arXiv ID. An `invalid_identifier` result can flag a wrong DOI or arXiv ID even if title search found the intended work. `diffs[].field: arxivId` compares the supplied and matched IDs. `reason: arxiv_id_unconfirmed` means the work may match but the ID remains unverified; do not call it an invalid ID without conflicting evidence.
+
+For `reason: web_check_required`, show `originalUrl` (when present) and `webSearchUrl`. These are manual review links, not evidence that a page exists or that its metadata is correct. This fallback covers unresolved model cards, blogs and similar web references without a DOI or arXiv ID. Ask the reader to compare the original page's title, author, date and recommended citation; a different recommended citation alone does not prove fabrication. The CLI retains arXiv queries even though the browser UI does not query arXiv directly.
 
 Exit code: `0` none likely-hallucinated, `1` at least one `likely_hallucinated`, `2` bad input.
 
@@ -62,7 +64,7 @@ Exit code: `0` none likely-hallucinated, `1` at least one `likely_hallucinated`,
 2. Run `citeproof FILE --json --workers 3`.
 3. Report counts from `summary`, then list `likely_hallucinated` and `metadata_mismatch` with `note` and differing fields.
 4. Quote source errors honestly (429, timeout, network). Do not upgrade those to “fake citation”.
-5. For remaining doubts, give the `scholarUrl` so a human can open Google Scholar. Do not scrape Scholar.
+5. For web references needing review, provide `originalUrl` and `webSearchUrl`; for remaining scholarly doubts, give `scholarUrl`. Do not scrape Scholar.
 6. Point at https://citeproof.pocketplay.win if the user wants a UI.
 
 If the CLI is not installed, say so and give the `pip install "citeproof @ git+https://github.com/xiehuanyi/citeproof.git"` line. Do not invent matches.

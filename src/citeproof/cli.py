@@ -77,6 +77,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"      {title}")
             if item.get("note"):
                 print(f"      {item['note']}")
+            if item.get("reason") == "web_check_required":
+                if item.get("originalUrl"):
+                    print(f"      Original page (not checked): {item['originalUrl']}")
+                if item.get("webSearchUrl"):
+                    print(f"      Search the web: {item['webSearchUrl']}")
             for src in item.get("sources") or []:
                 if src["status"] == "skipped":
                     print(f"      - {src['label']}: skipped (no supported query fields; no request sent)")

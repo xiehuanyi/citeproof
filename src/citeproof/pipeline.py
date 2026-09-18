@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .errors import serialize_error
 from .match import decide, score_candidate
-from .normalize import normalize_entry, scholar_url
+from .normalize import normalize_entry, normalize_web_url, scholar_url, web_search_url
 from .parse import parse_bibtex
 from .providers import PROVIDERS
 
@@ -114,6 +114,7 @@ def verify_one(ref: dict, providers=None, on_event=None) -> dict:
             "venue": ref.get("venue"),
             "doi": ref.get("doi"),
             "arxivId": ref.get("arxiv_id"),
+            "url": normalize_web_url(ref.get("url")),
         },
         "verdict": decision["verdict"],
         "type": decision.get("type"),
@@ -137,6 +138,8 @@ def verify_one(ref: dict, providers=None, on_event=None) -> dict:
         },
         "sources": decision.get("sources"),
         "scholarUrl": scholar_url(ref),
+        "originalUrl": normalize_web_url(ref.get("url")),
+        "webSearchUrl": web_search_url(ref),
     }
     if on_event:
         on_event({"type": "ref_done", "item": item})

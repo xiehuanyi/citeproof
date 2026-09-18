@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .normalize import author_last_name, normalize_text, tokenize
+from .normalize import author_last_name, is_web_reference, normalize_text, tokenize
 
 WEIGHTS = {"title": 0.55, "authors": 0.2, "year": 0.1, "venue": 0.1, "identifier": 0.05}
 STOP = {"the", "a", "an", "of", "and", "in", "on", "for", "to", "with"}
@@ -201,8 +201,19 @@ def decide(ref: dict, scored: list[dict], source_statuses: list[dict]) -> dict:
     diffs = _diffs(ref, best) if best else []
     base = {"best": best, "candidates": ranked[:4], "diffs": diffs, "sources": source_statuses}
     queried_ok = len(ok_sources)
+    web_fallback = {
+        **base,
+        "diffs": [],
+        "verdict": "inconclusive",
+        "type": None,
+        "reason": "web_check_required",
+        "confidence": 0.35,
+        "note": "This web reference has not been verified by the scholarly sources. Check the original page or search the web, including any recommended citation. The link itself has not been checked.",
+    } if is_web_reference(ref) else None
 
     if not any(ref.get(field) for field in ("title", "doi", "arxiv_id")):
+        if web_fallback:
+            return web_fallback
         return {
             **base,
             "verdict": "inconclusive",
@@ -236,6 +247,8 @@ def decide(ref: dict, scored: list[dict], source_statuses: list[dict]) -> dict:
         }
 
     if not best or best["overall"] < 0.54:
+        if web_fallback:
+            return web_fallback
         if queried_ok >= 3:
             return {
                 **base,
@@ -303,6 +316,9 @@ def decide(ref: dict, scored: list[dict], source_statuses: list[dict]) -> dict:
     if best["overall"] >= 0.7 and best["scores"]["title"] >= 0.78:
         kind = "franken_citation" if best["scores"]["authors"] < 0.4 and any(d["field"] == "authors" for d in diffs) else "metadata_hallucination"
         return {**base, "verdict": "metadata_mismatch", "type": kind, "confidence": best["overall"], "note": "A possible match was found, but the metadata differs."}
+
+    if web_fallback:
+        return web_fallback
 
     if len(error_sources) >= 2 or queried_ok < 2:
         return {**base, "verdict": "inconclusive", "type": None, "confidence": best["overall"], "note": "Not enough independent sources responded cleanly."}
