@@ -6,6 +6,8 @@ This is the **command-line package**. It is **not on PyPI**. Install it from thi
 
 Human UI (queries run in your browser): **https://citeproof.pocketplay.win**
 
+**CiteProof is an informational tool, not an accuracy guarantee.** Results are based on third-party databases and automated matching and are not guaranteed to be 100% accurate, complete, or current. Check original sources before relying on the output; a “likely hallucinated” label is not proof of fabrication or academic misconduct. See the [full disclaimer / 免责声明](DISCLAIMER.md) and [website privacy notice](https://citeproof.pocketplay.win/privacy.html).
+
 ## Install
 
 Python 3.10+, no third-party dependencies.
