@@ -185,6 +185,8 @@ def _diffs(ref: dict, cand: dict) -> list[dict]:
         diffs.append({"field": "venue", "bib": ref["venue"], "found": cand["venue"]})
     if ref.get("doi") and cand.get("doi") and ref["doi"] != cand["doi"]:
         diffs.append({"field": "doi", "bib": ref["doi"], "found": cand["doi"]})
+    if ref.get("arxiv_id") and cand.get("arxiv_id") and ref["arxiv_id"] != cand["arxiv_id"]:
+        diffs.append({"field": "arxivId", "bib": ref["arxiv_id"], "found": cand["arxiv_id"]})
     return diffs
 
 
@@ -200,18 +202,37 @@ def decide(ref: dict, scored: list[dict], source_statuses: list[dict]) -> dict:
     base = {"best": best, "candidates": ranked[:4], "diffs": diffs, "sources": source_statuses}
     queried_ok = len(ok_sources)
 
-    id_conflict = next((c for c in ranked if c.get("identifier_conflict") and c["scores"]["title"] < 0.78), None)
-    if best and best.get("identifier_matched") and best["scores"]["title"] < 0.72:
-        id_conflict = id_conflict or best
-    if ref.get("doi") and id_conflict and (not best or best["scores"]["title"] < 0.78 or id_conflict is best):
+    if not any(ref.get(field) for field in ("title", "doi", "arxiv_id")):
         return {
             **base,
-            "best": id_conflict,
-            "diffs": _diffs(ref, id_conflict),
+            "verdict": "inconclusive",
+            "type": None,
+            "reason": "missing_query_fields",
+            "confidence": 0.0,
+            "note": "No title, DOI or arXiv ID was supplied. No scholarly source was queried.",
+        }
+
+    # Inspect every identifier match: a better title hit must not hide a wrong ID.
+    id_conflict = next((c for c in ranked if ref.get("title") and c.get("title") and (
+        (c.get("identifier_matched") and c["scores"]["title"] < 0.72)
+        or (c.get("identifier_conflict") and c["scores"]["title"] < 0.78)
+    )), None)
+    arxiv_mismatch = next((c for c in ranked if (
+        ref.get("arxiv_id") and c.get("arxiv_id") and ref["arxiv_id"] != c["arxiv_id"]
+        and c["scores"]["title"] >= 0.9 and c["scores"]["authors"] >= 0.55
+    )), None)
+    if id_conflict or arxiv_mismatch:
+        evidence = id_conflict or arxiv_mismatch
+        return {
+            **base,
+            "best": evidence,
+            "diffs": _diffs(ref, evidence),
             "verdict": "metadata_mismatch",
             "type": "invalid_identifier",
-            "confidence": max(id_conflict["scores"]["identifier"], 0.8),
-            "note": "The identifier in the BibTeX record points at a different work than the title and authors.",
+            "reason": None if id_conflict else "arxiv_id_mismatch",
+            "confidence": max(evidence["scores"]["identifier"], 0.8),
+            "note": "The identifier in the BibTeX record points at a different work than the title and authors."
+            if id_conflict else "The arXiv ID in the BibTeX record differs from the matched work's arXiv ID.",
         }
 
     if not best or best["overall"] < 0.54:
@@ -249,6 +270,19 @@ def decide(ref: dict, scored: list[dict], source_statuses: list[dict]) -> dict:
     )
     if best["overall"] >= 0.86 and best["scores"]["title"] >= 0.84 and best["scores"]["authors"] >= 0.55:
         if not diffs:
+            if ref.get("arxiv_id") and not any(
+                c.get("arxiv_id") == ref["arxiv_id"]
+                and c["scores"]["title"] >= 0.84 and c["scores"]["authors"] >= 0.55
+                for c in ranked
+            ):
+                return {
+                    **base,
+                    "verdict": "inconclusive",
+                    "type": None,
+                    "reason": "arxiv_id_unconfirmed",
+                    "confidence": best["overall"],
+                    "note": "A matching work was found, but the supplied arXiv ID could not be confirmed. This does not establish that the ID is wrong.",
+                }
             return {**base, "verdict": "verified", "type": None, "confidence": best["overall"], "note": "Strong evidence that this work exists."}
         if version_like:
             return {

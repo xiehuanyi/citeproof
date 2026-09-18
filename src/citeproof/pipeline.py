@@ -31,7 +31,7 @@ def _uniq(cands: list[dict]) -> list[dict]:
     seen = set()
     out = []
     for c in cands:
-        key = f"{c.get('source')}|{c.get('doi') or ''}|{(c.get('title') or '').lower()}|{c.get('year') or ''}"
+        key = (c.get("source"), c.get("doi"), c.get("arxiv_id"), (c.get("title") or "").lower(), c.get("year"), c.get("via"))
         if key in seen:
             continue
         seen.add(key)
@@ -39,7 +39,21 @@ def _uniq(cands: list[dict]) -> list[dict]:
     return out
 
 
+def _can_query(provider: dict, ref: dict) -> bool:
+    fields = provider.get("query_fields", ("title", "doi", "arxiv_id"))
+    return any(ref.get(field) for field in fields)
+
+
 def _resolve_provider(provider: dict, ref: dict) -> dict:
+    if not _can_query(provider, ref):
+        return {
+            "id": provider["id"],
+            "label": provider["label"],
+            "status": "skipped",
+            "reason": "missing_query_fields",
+            "error": None,
+            "candidates": [],
+        }
     try:
         candidates = provider["resolve"](ref) or []
         return {
@@ -67,7 +81,7 @@ def verify_one(ref: dict, providers=None, on_event=None) -> dict:
     with ThreadPoolExecutor(max_workers=len(providers)) as pool:
         futs = {}
         for p in providers:
-            if on_event:
+            if on_event and _can_query(p, ref):
                 on_event({"type": "source_start", "ref": ref, "id": p["id"], "label": p["label"]})
             futs[pool.submit(_resolve_provider, p, ref)] = p
         for fut in as_completed(futs):
@@ -103,6 +117,7 @@ def verify_one(ref: dict, providers=None, on_event=None) -> dict:
         },
         "verdict": decision["verdict"],
         "type": decision.get("type"),
+        "reason": decision.get("reason"),
         "confidence": round(float(decision.get("confidence") or 0), 3),
         "note": decision.get("note"),
         "diffs": decision.get("diffs") or [],

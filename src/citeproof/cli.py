@@ -78,7 +78,9 @@ def main(argv: list[str] | None = None) -> int:
             if item.get("note"):
                 print(f"      {item['note']}")
             for src in item.get("sources") or []:
-                if src["status"] == "error":
+                if src["status"] == "skipped":
+                    print(f"      - {src['label']}: skipped (no supported query fields; no request sent)")
+                elif src["status"] == "error":
                     code = (src.get("error") or {}).get("code")
                     print(f"      - {src['label']}: {code} (not a missing paper)")
                 elif src["status"] == "ok" and src.get("matches"):

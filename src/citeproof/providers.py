@@ -293,9 +293,9 @@ def _to_dblp(row: dict) -> dict:
 
 
 PROVIDERS = [
-    {"id": "crossref", "label": "Crossref", "resolve": resolve_crossref},
-    {"id": "dblp", "label": "DBLP", "resolve": resolve_dblp},
-    {"id": "semanticscholar", "label": "Semantic Scholar", "resolve": resolve_semanticscholar},
-    {"id": "openalex", "label": "OpenAlex", "resolve": resolve_openalex},
-    {"id": "arxiv", "label": "arXiv", "resolve": resolve_arxiv},
+    {"id": "crossref", "label": "Crossref", "resolve": resolve_crossref, "query_fields": ("title", "doi")},
+    {"id": "dblp", "label": "DBLP", "resolve": resolve_dblp, "query_fields": ("title", "doi")},
+    {"id": "semanticscholar", "label": "Semantic Scholar", "resolve": resolve_semanticscholar, "query_fields": ("title", "doi", "arxiv_id")},
+    {"id": "openalex", "label": "OpenAlex", "resolve": resolve_openalex, "query_fields": ("title", "doi")},
+    {"id": "arxiv", "label": "arXiv", "resolve": resolve_arxiv, "query_fields": ("title", "arxiv_id")},
 ]

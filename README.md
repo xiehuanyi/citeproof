@@ -14,7 +14,7 @@ Python 3.10+, no third-party dependencies.
 pip install "citeproof @ git+https://github.com/xiehuanyi/citeproof.git"
 ```
 
-Upgradeable with the same command. There is no `pip install citeproof` from PyPI.
+To upgrade, run `pip install --upgrade "citeproof @ git+https://github.com/xiehuanyi/citeproof.git"`. There is no `pip install citeproof` from PyPI.
 
 ## CLI
 
@@ -51,8 +51,8 @@ Use **3** unless Semantic Scholar is already throttling you, then use **2**. Do 
 | Verdict | Meaning |
 |---|---|
 | `verified` | Work exists, metadata matches |
-| `metadata_mismatch` | Work exists; author / year / venue / DOI disagrees |
-| `inconclusive` | Not enough successful sources |
+| `metadata_mismatch` | Work exists; author / year / venue / DOI / arXiv ID disagrees |
+| `inconclusive` | Missing query fields, insufficient evidence, or an unconfirmed arXiv ID |
 | `likely_hallucinated` | Several sources responded; nothing close matched |
 
 Mismatch `type` values: `metadata_hallucination`, `franken_citation`, `invalid_identifier`, `version_confusion`.
@@ -65,7 +65,17 @@ Google Scholar is **not** queried. JSON includes `scholarUrl` for a human to ope
 python scripts/install_skill.py
 ```
 
-copies `skills/citeproof/SKILL.md` into `~/.grok/skills/citeproof` and `~/.codex/skills/citeproof` if those trees exist. The skill tells an agent to run `citeproof FILE --json --workers 3` and how to read the result.
+Installs `skills/citeproof` into `~/.grok/skills/citeproof`, `~/.codex/skills/citeproof`, and `~/.agents/skills/citeproof`, creating the parent directories as needed. Existing skill directories are left untouched by default.
+
+To update an existing installation:
+
+```sh
+python scripts/install_skill.py --update
+```
+
+The update is prepared before replacing the installed directory. Custom files are retained; bundled files such as `SKILL.md` are updated. The complete old directory is kept under the corresponding tool's `skill-backups` directory (for example, `~/.codex/skill-backups/citeproof-...`), and its path is printed. If replacement fails, the installer restores the original directory when the destination remains free. Conflicting symlinks or file/directory types are refused without modifying the installation.
+
+The skill tells an agent to run `citeproof FILE --json --workers 3` and how to read the result. A source with no supported query fields has status `skipped`; no request was sent, so it is not evidence that the work is missing. A result with `reason: missing_query_fields` is `inconclusive`. An arXiv ID conflict is an `invalid_identifier` metadata mismatch; an ID that could not be confirmed is `inconclusive`, not verified or declared wrong.
 
 ## Library
 

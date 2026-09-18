@@ -28,7 +28,7 @@ citeproof - --json < paper.bib
 
 ## Workers
 
-Default `--workers 3` (parallel references). Each reference still queries five sources.
+Default `--workers 3` (parallel references). Each reference can query up to five sources; sources without supported query fields are skipped.
 
 | Workers | Guidance |
 |---|---|
@@ -46,11 +46,13 @@ Top-level: `summary`, `results`, `workers`.
 Each result `verdict`:
 
 - `verified` — work exists and metadata matches
-- `metadata_mismatch` — work exists; author/year/venue/DOI disagrees (`type` may be `franken_citation`, `invalid_identifier`, `version_confusion`, `metadata_hallucination`)
-- `inconclusive` — not enough successful sources
+- `metadata_mismatch` — work exists; author/year/venue/DOI/arXiv ID disagrees (`type` may be `franken_citation`, `invalid_identifier`, `version_confusion`, `metadata_hallucination`)
+- `inconclusive` — query fields are missing, evidence is insufficient, or the supplied arXiv ID could not be confirmed
 - `likely_hallucinated` — several sources responded and nothing close matched
 
-`sources[].status`: `ok` | `empty` | `error`. If `error`, read `sources[].error.code` (`timeout`, `rate_limited`, `network`, `http_403`, `http_5xx`, `blocked`, …). **A failed query is not evidence the paper is missing.**
+`sources[].status`: `ok` | `empty` | `error` | `skipped`. `skipped` with `reason: missing_query_fields` means no request was sent to that source; do not count it as a database miss. If `error`, read `sources[].error.code` (`timeout`, `rate_limited`, `network`, `http_403`, `http_5xx`, `blocked`, …). **A failed or skipped query is not evidence the paper is missing.**
+
+For result `reason: missing_query_fields`, ask for a title, DOI or arXiv ID. An `invalid_identifier` result can flag a wrong DOI or arXiv ID even if title search found the intended work. `diffs[].field: arxivId` compares the supplied and matched IDs. `reason: arxiv_id_unconfirmed` means the work may match but the ID remains unverified; do not call it an invalid ID without conflicting evidence.
 
 Exit code: `0` none likely-hallucinated, `1` at least one `likely_hallucinated`, `2` bad input.
 
